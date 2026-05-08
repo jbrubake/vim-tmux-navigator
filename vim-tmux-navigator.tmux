@@ -25,9 +25,17 @@ get_tmux_option() {
 declare vim_pattern='(\S+/)?g?\.?(view|l?n?vim?x?|fzf)(diff)?(-wrapped)?'
 
 bind_key_vim() {
-  local key tmux_cmd is_vim tmux_navigator_disable_when_zoomed
+  local key direction tmux_cmd is_vim tmux_navigator_disable_when_zoomed
   key="$1"
-  tmux_cmd="$2"
+  direction="$2"
+
+  case $direction in
+    left)  tmux_cmd="select-pane -L"; check="#{pane_at_left}" ;;
+    down)  tmux_cmd="select-pane -D"; check="#{pane_at_bottom}" ;;
+    up)    tmux_cmd="select-pane -U"; check="#{pane_at_top}" ;;
+    right) tmux_cmd="select-pane -R"; check="#{pane_at_right}" ;;
+    prev)  tmux_cmd="select-pane -l"; check="" ;;
+  esac
 
   vim_pattern="$(get_tmux_option "@vim_navigator_pattern" "${vim_pattern}")"
 
@@ -39,6 +47,10 @@ bind_key_vim() {
   tmux_navigator_disable_when_zoomed="$(get_tmux_option "@tmux_navigator_disable_when_zoomed" "0")"
   if [ "$tmux_navigator_disable_when_zoomed" = "1" ]; then
     tmux_cmd="if-shell -F '#{window_zoomed_flag}' '' '$tmux_cmd'"
+  fi
+
+  if [[ "$(get_tmux_option "@vim_navigator_no_wrap")" == 1 ]] && [[ -n "$check" ]]; then
+      tmux_cmd="if-shell -F '$check' '' '$tmux_cmd'"
   fi
 
   # sending C-/ according to https://github.com/tmux/tmux/issues/1827
@@ -54,11 +66,11 @@ main() {
   move_down="$(get_tmux_option "@vim_navigator_mapping_down" 'C-j')"
   move_prev="$(get_tmux_option "@vim_navigator_mapping_prev" 'C-\')"
 
-  for k in $(echo "$move_left");  do bind_key_vim "$k" "select-pane -L"; done
-  for k in $(echo "$move_down");  do bind_key_vim "$k" "select-pane -D"; done
-  for k in $(echo "$move_up");    do bind_key_vim "$k" "select-pane -U"; done
-  for k in $(echo "$move_right"); do bind_key_vim "$k" "select-pane -R"; done
-  for k in $(echo "$move_prev");  do bind_key_vim "$k" "select-pane -l"; done
+  for k in $(echo "$move_left");  do bind_key_vim "$k" "left"; done
+  for k in $(echo "$move_down");  do bind_key_vim "$k" "down"; done
+  for k in $(echo "$move_up");    do bind_key_vim "$k" "up"; done
+  for k in $(echo "$move_right"); do bind_key_vim "$k" "right"; done
+  for k in $(echo "$move_prev");  do bind_key_vim "$k" "prev"; done
 
   # Restoring clear screen
   clear_screen="$(get_tmux_option "@vim_navigator_prefix_mapping_clear_screen" 'C-l')"
